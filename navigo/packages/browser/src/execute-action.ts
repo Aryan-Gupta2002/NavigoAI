@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { INTERACTIVE_SELECTOR } from "@repo/dom";
 
 interface ClickAction {
   type: "click";
@@ -18,10 +19,15 @@ interface PressAction {
   index: number;
   key: string;
 }
-type Action = PressAction | ClickAction | TypeAction | NavigateAction;
+interface DoneAction {
+  type: "done";
+  message: string;
+}
+export type Action =
+  DoneAction | PressAction | ClickAction | TypeAction | NavigateAction;
 
 async function executeAction(page: Page, action: Action): Promise<void> {
-  const Elements = page.locator("a,button,input,textarea,select");
+  const Elements = page.locator(INTERACTIVE_SELECTOR);
   switch (action.type) {
     case "click": {
       const element = Elements.nth(action.index);

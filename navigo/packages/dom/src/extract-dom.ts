@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { INTERACTIVE_SELECTOR } from "./constants.js";
 
 interface ExtractedElement {
   index: number;
@@ -9,16 +10,16 @@ interface ExtractedElement {
   placeholder: string | null;
   ariaLabel: string | null;
 }
-interface ExtractedDOM {
+export interface ExtractedDOM {
   title: string;
   elements: ExtractedElement[];
 }
 
 export async function extractDOM(page: Page): Promise<ExtractedDOM> {
-  const extractedDOM = await page.evaluate(() => {
+  const extractedDOM = await page.evaluate((selector) => {
     const title = document.title;
     const domElements = Array.from(
-      document.querySelectorAll("a,button,input,textarea,select"),
+      document.querySelectorAll(selector),
     );
     const elements = domElements.map<ExtractedElement>((element, index) => {
       return {
@@ -35,6 +36,6 @@ export async function extractDOM(page: Page): Promise<ExtractedDOM> {
       };
     });
     return { title, elements };
-  });
+  },INTERACTIVE_SELECTOR);
   return extractedDOM;
 }
