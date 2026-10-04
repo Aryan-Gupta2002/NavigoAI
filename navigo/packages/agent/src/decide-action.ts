@@ -1,29 +1,14 @@
-import { client } from "./client";
-import type { ExtractedDOM } from "../../dom/src/extract-dom";
-import type { Action } from "../../browser/src/execute-action";
-import { SYSTEM_PROMPT } from "./systemPrompt";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { client } from "./client.js";
+import type { Action } from "@repo/browser";
 
 export async function decideAction(
-  goal: string,
-  dom: ExtractedDOM,
+  messages: ChatCompletionMessageParam[],
 ): Promise<Action> {
   const response = await client.chat.completions.create({
     model: "gpt-6-luna",
 
-    messages: [
-      {
-        role: "system",
-        content: SYSTEM_PROMPT,
-      },
-      {
-        role: "user",
-        content: `USER GOAL:
-${goal}
-
-CURRENT PAGE:
-${JSON.stringify(dom)}`,
-      },
-    ],
+    messages,
 
     response_format: {
       type: "json_schema",
@@ -32,88 +17,33 @@ ${JSON.stringify(dom)}`,
         strict: true,
 
         schema: {
-          oneOf: [
-            {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  const: "click",
-                },
-                index: {
-                  type: "integer",
-                },
-              },
-              required: ["type", "index"],
-              additionalProperties: false,
-            },
+          type: "object",
 
-            {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  const: "type",
-                },
-                index: {
-                  type: "integer",
-                },
-                text: {
-                  type: "string",
-                },
-              },
-              required: ["type", "index", "text"],
-              additionalProperties: false,
+          properties: {
+            type: {
+              type: "string",
+              enum: ["click", "type", "press", "navigate", "done"],
             },
+            index: {
+              type: ["integer", "null"],
+            },
+            text: {
+              type: ["string", "null"],
+            },
+            key: {
+              type: ["string", "null"],
+            },
+            url: {
+              type: ["string", "null"],
+            },
+            message: {
+              type: ["string", "null"],
+            },
+          },
 
-            {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  const: "press",
-                },
-                index: {
-                  type: "integer",
-                },
-                key: {
-                  type: "string",
-                },
-              },
-              required: ["type", "index", "key"],
-              additionalProperties: false,
-            },
+          required: ["type", "index", "text", "key", "url", "message"],
 
-            {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  const: "navigate",
-                },
-                url: {
-                  type: "string",
-                },
-              },
-              required: ["type", "url"],
-              additionalProperties: false,
-            },
-
-            {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  const: "done",
-                },
-                message: {
-                  type: "string",
-                },
-              },
-              required: ["type", "message"],
-              additionalProperties: false,
-            },
-          ],
+          additionalProperties: false,
         },
       },
     },
@@ -125,5 +55,42 @@ ${JSON.stringify(dom)}`,
     throw new Error("LLM returned an empty response");
   }
 
-  return JSON.parse(content) as Action;
+  const result = JSON.parse(content);
+
+  switch (result.type) {
+    case "click":
+      return {
+        type: "click",
+        index: result.index,
+      };
+
+    case "type":
+      return {
+        type: "type",
+        index: result.index,
+        text: result.text,
+      };
+
+    case "press":
+      return {
+        type: "press",
+        index: result.index,
+        key: result.key,
+      };
+
+    case "navigate":
+      return {
+        type: "navigate",
+        url: result.url,
+      };
+
+    case "done":
+      return {
+        type: "done",
+        message: result.message,
+      };
+
+    default:
+      throw new Error(`Unknown action type: ${result.type}`);
+  }
 }
