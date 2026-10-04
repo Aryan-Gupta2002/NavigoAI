@@ -26,8 +26,11 @@ interface DoneAction {
 export type Action =
   DoneAction | PressAction | ClickAction | TypeAction | NavigateAction;
 
-async function executeAction(page: Page, action: Action): Promise<void> {
-  const Elements = page.locator(INTERACTIVE_SELECTOR);
+export async function executeAction(page: Page, action: Action): Promise<void> {
+  // Must match the visibility filter in extractDOM, otherwise the index the
+  // model picked points at a different element than the one it was shown.
+  const Elements = page.locator(INTERACTIVE_SELECTOR).filter({ visible: true });
+
   switch (action.type) {
     case "click": {
       const element = Elements.nth(action.index);
